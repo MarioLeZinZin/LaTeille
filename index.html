@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1a1130">
+<title>La Bouteille 🍾</title>
+<style>
+  :root {
+    --bg: #1a1130;
+    --card: #2d2150;
+    --accent: #ff4d8d;
+    --accent2: #7b5cff;
+    --gold: #ffd166;
+    --text: #f5f0ff;
+    --muted: #b3a7d4;
+    --fun: #ffd166;
+    --hot: #ff4d8d;
+    --alcool: #5cc8ff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #3a2168, var(--bg) 70%);
+    color: var(--text);
+    overflow: hidden;
+    user-select: none; -webkit-user-select: none;
+  }
+  #app { height: 100dvh; display: flex; flex-direction: column; }
+  .screen { flex: 1; display: none; flex-direction: column; padding: env(safe-area-inset-top) 20px 20px; overflow: hidden; }
+  .screen.active { display: flex; animation: fade .35s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes pop { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
+
+  h1 { font-size: 30px; text-align: center; margin: 14px 0 4px; font-weight: 800; letter-spacing: .5px; }
+  .subtitle { text-align: center; color: var(--muted); margin: 0 0 14px; font-size: 14px; }
+
+  /* ---- Setup ---- */
+  .scroll { flex: 1; overflow-y: auto; }
+  .player-list { display: flex; flex-direction: column; gap: 10px; padding: 2px; }
+  .player-row { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 16px; padding: 12px 14px; animation: fade .25s ease; }
+  .player-dot { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .player-name { flex: 1; font-size: 17px; font-weight: 600; }
+  .del { background: none; border: none; color: var(--muted); font-size: 22px; padding: 4px 8px; cursor: pointer; }
+  .add-row { display: flex; gap: 10px; margin: 10px 0 8px; }
+  input[type=text] { flex: 1; background: var(--card); border: 2px solid transparent; border-radius: 14px; padding: 14px 16px; font-size: 17px; color: var(--text); outline: none; }
+  input[type=text]:focus { border-color: var(--accent2); }
+  .section-label { color: var(--muted); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin: 18px 0 8px; }
+  .seg { display: flex; gap: 8px; }
+  .seg button { flex: 1; padding: 12px 6px; border-radius: 14px; border: 2px solid var(--card); background: var(--card); color: var(--muted); font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s; line-height: 1.3; }
+  .seg button small { display: block; font-size: 10px; font-weight: 600; opacity: .7; margin-top: 2px; text-transform: none; letter-spacing: 0; }
+  .seg button.on { background: linear-gradient(135deg, var(--accent), var(--accent2)); border-color: transparent; color: #fff; }
+  .seg button.on small { opacity: .9; }
+  .hidden { display: none !important; }
+
+  .btn { border: none; border-radius: 16px; padding: 16px; font-size: 17px; font-weight: 700; color: #fff; cursor: pointer; transition: transform .08s; touch-action: manipulation; }
+  .btn:active { transform: scale(.96); }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow: 0 8px 24px rgba(255,77,141,.35); }
+  .btn-ghost { background: var(--card); color: var(--text); }
+  .btn-add { background: var(--accent2); padding: 14px 20px; }
+  .btn-block { width: 100%; margin-top: 12px; }
+  .btn:disabled { opacity: .4; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 9px 14px; border-radius: 999px; font-size: 14px; font-weight: 700; border: 2px solid var(--card); background: var(--card); color: var(--muted); cursor: pointer; transition: all .15s; }
+  .chip.on { color: #1a1130; }
+  .chip[data-t=fun].on { background: var(--fun); border-color: var(--fun); }
+  .chip[data-t=hot].on { background: var(--hot); border-color: var(--hot); color: #fff; }
+  .chip[data-t=alcool].on { background: var(--alcool); border-color: var(--alcool); }
+  .chip.type.on { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+
+  /* ---- Game / bottle ---- */
+  .topbar { display: flex; justify-content: space-between; align-items: center; padding: 4px 2px 0; }
+  .topbar .round { color: var(--muted); font-size: 14px; }
+  .icon-btn { background: var(--card); border: none; color: var(--text); width: 40px; height: 40px; border-radius: 12px; font-size: 18px; cursor: pointer; }
+  .wheel-wrap { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+  #wheel { position: relative; width: min(86vw, 380px); height: min(86vw, 380px); }
+  .name-tag { position: absolute; left: 50%; top: 50%; font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 999px; background: var(--card); white-space: nowrap; transform-origin: center; box-shadow: 0 4px 12px rgba(0,0,0,.3); transition: all .3s; }
+  .name-tag.chosen { transform: translate(-50%,-50%) scale(1.25) !important; box-shadow: 0 0 0 3px var(--gold), 0 6px 18px rgba(255,209,102,.5); z-index: 5; }
+  .bottle-hub { position: absolute; left: 50%; top: 50%; width: 64%; height: 64%; transform: translate(-50%,-50%); border-radius: 50%; background: radial-gradient(circle at 50% 40%, #3a2870, #221646); box-shadow: inset 0 0 30px rgba(0,0,0,.5), 0 0 0 2px rgba(255,255,255,.06); display: flex; align-items: center; justify-content: center; }
+  #bottle { width: 36%; height: auto; transform-origin: 50% 50%; transition: transform 4s cubic-bezier(.17,.67,.2,1); filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+  .spin-hint { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; color: var(--muted); font-size: 14px; }
+
+  /* ---- Overlays ---- */
+  .overlay { position: fixed; inset: 0; background: rgba(12,6,28,.88); backdrop-filter: blur(6px); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 24px; z-index: 50; text-align: center; }
+  .overlay.active { display: flex; animation: fade .3s ease; }
+  .chosen-name { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+  .chosen-sub { color: var(--muted); margin-bottom: 24px; }
+
+  /* card choice */
+  .cards { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 440px; }
+  .game-card { position: relative; text-align: left; border: none; border-radius: 20px; padding: 18px 20px; cursor: pointer; color: #1a1130; transition: transform .1s; overflow: hidden; animation: pop .3s ease backwards; }
+  .game-card:active { transform: scale(.97); }
+  .game-card:nth-child(2){ animation-delay:.06s } .game-card:nth-child(3){ animation-delay:.12s }
+  .game-card .gc-type { font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .game-card .gc-theme { font-size: 12px; font-weight: 700; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; opacity: .8; }
+  .game-card.hot { color: #fff; }
+
+  /* question card */
+  .qcard { background: var(--card); border-radius: 24px; padding: 28px 24px; width: 100%; max-width: 440px; box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+  .qcard .chosen-name { font-size: 18px; color: var(--gold); margin-bottom: 14px; }
+  .qtype { font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+  .qtheme { display:inline-block; font-size: 11px; padding: 3px 10px; border-radius: 999px; margin-bottom: 18px; font-weight:700; }
+  .qtext { font-size: 23px; line-height: 1.4; font-weight: 600; margin-bottom: 24px; }
+  .timer { margin-bottom: 22px; }
+  .timer-num { font-size: 56px; font-weight: 800; color: var(--gold); line-height: 1; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- SETUP -->
+  <section id="setup" class="screen active">
+    <h1>🍾 La Bouteille</h1>
+    <p class="subtitle">Le jeu de soirée entre amis</p>
+    <div class="scroll">
+      <div class="add-row">
+        <input id="nameInput" type="text" placeholder="Prénom du joueur" maxlength="14" autocomplete="off">
+        <button class="btn btn-add" id="addBtn">+</button>
+      </div>
+      <div class="player-list" id="playerList"></div>
+
+      <div class="section-label">Thèmes</div>
+      <div class="chips" id="themesSetup">
+        <button class="chip on" data-t="fun">😜 Fun</button>
+        <button class="chip on" data-t="hot">🔥 Hot</button>
+        <button class="chip on" data-t="alcool">🍻 Alcool</button>
+      </div>
+
+      <div class="section-label" id="hotLevelLabel">Intensité Hot 🔞</div>
+      <div class="seg" id="hotLevelSeg"></div>
+
+      <div class="section-label">Types de cartes</div>
+      <div class="chips" id="typesSetup"></div>
+    </div>
+    <button class="btn btn-primary btn-block" id="startBtn" disabled>Ajoute au moins 2 joueurs</button>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" id="backBtn">‹</button>
+      <span class="round" id="roundLabel">Tour 1</span>
+      <button class="icon-btn" id="resetBtn">↺</button>
+    </div>
+    <div class="wheel-wrap" id="wheelWrap">
+      <div id="wheel">
+        <div class="bottle-hub">
+          <svg id="bottle" viewBox="0 0 60 200" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="glass" x1="0" x2="1">
+                <stop offset="0" stop-color="#3ddc97"/>
+                <stop offset=".5" stop-color="#1f9d6b"/>
+                <stop offset="1" stop-color="#0c5c3d"/>
+              </linearGradient>
+            </defs>
+            <rect x="24" y="2" width="12" height="34" rx="3" fill="#7a5a2a"/>
+            <path d="M22 36 q-8 8 -8 24 v124 q0 12 16 12 h0 q16 0 16-12 V60 q0-16 -8-24 z" fill="url(#glass)"/>
+            <rect x="18" y="92" width="24" height="46" rx="4" fill="#f5f0ff" opacity=".85"/>
+            <ellipse cx="22" cy="80" rx="3" ry="22" fill="#ffffff" opacity=".35"/>
+            <circle cx="30" cy="14" r="4" fill="#ffd166"/>
+          </svg>
+        </div>
+      </div>
+      <div class="spin-hint" id="spinHint">Tape la bouteille pour la faire tourner</div>
+    </div>
+  </section>
+</div>
+
+<!-- CHOICE OVERLAY (3 cards) -->
+<div class="overlay" id="choiceOverlay">
+  <div class="chosen-name" id="choiceName">Joueur</div>
+  <div class="chosen-sub">À toi de choisir ta carte</div>
+  <div class="cards" id="cardChoice"></div>
+</div>
+
+<!-- QUESTION OVERLAY -->
+<div class="overlay" id="questionOverlay">
+  <div class="qcard">
+    <div class="chosen-name" id="qName">Joueur</div>
+    <div class="qtype" id="qType">ACTION</div>
+    <div class="qtheme" id="qTheme">Fun</div>
+    <div class="qtext" id="qText">...</div>
+    <div class="timer" id="qTimer" style="display:none">
+      <div class="timer-num" id="timerNum">30</div>
+      <button class="btn btn-ghost" id="timerStart" style="width:100%">Démarrer ⏱️</button>
+    </div>
+    <button class="btn btn-primary btn-block" id="doneBtn" style="margin-top:0">Fait ! Tour suivant</button>
+  </div>
+</div>
+
+<script>
+// ============ TYPES & THÈMES ============
+const THEMES = {
+  fun:    { label: "Fun",    color: "#ffd166", emoji:"😜" },
+  hot:    { label: "Hot",    color: "#ff4d8d", emoji:"🔥" },
+  alcool: { label: "Alcool", color: "#5cc8ff", emoji:"🍻" },
+};
+const TYPES = {
+  av:       { label:"Action ou Vérité", emoji:"🎲", mode:"solo"  },
+  chrono:   { label:"Défi chrono",      emoji:"⏱️", mode:"solo"  },
+  roulette: { label:"Roulette russe",   emoji:"🎰", mode:"solo"  },
+  verdict:  { label:"Le verdict",       emoji:"🗳️", mode:"group" },
+  jamais:   { label:"Je n'ai jamais",   emoji:"🙅", mode:"group" },
+  tour:     { label:"Chacun son tour",  emoji:"🔄", mode:"group" },
+};
+
+// {AUTRE} = un autre joueur au hasard. {NOM} = le joueur désigné.
+const CONTENT = {
+  // -------- 🎲 ACTION ou VÉRITÉ : .action + .verite --------
+  av: {
+    fun:    { action:["Laisse {AUTRE} fouiller ta galerie et montrer une photo au groupe.","Montre la dernière photo de ta pellicule, sans tricher.","Refais ta pire danse de soirée à fond pendant 15 s.","Laisse {AUTRE} écrire un statut sur tes réseaux, et tu le postes.","Imite quelqu'un de la table, les autres devinent qui.","Lis à voix haute ton dernier message envoyé."],
+              verite:["Le dernier truc gênant dans ton historique de recherche ?","Ta plus grosse honte en soirée ?","Combien de fois tu as stalké ton ex cette semaine ?","Le DM le plus embarrassant que tu aies envoyé ?","Ton plus gros mytho assumé ?","Embrasser / épouser / larguer : 3 personnes de la table."] },
+    hot:    {
+      1: { action:["Mime ta position préférée, le groupe devine. 🔞","Refais le bruit que tu fais quand c'est très bien.","Désigne la personne la plus sexy de la table et explique pourquoi.","Envoie « chaude soirée ? » à ton dernier date, ou 3 gorgées.","Fais ta meilleure phrase de drague à {AUTRE}."],
+            verite:["Bodycount ou cul sec. 🔞","Qui dans la pièce te ferait dire oui ce soir ? Sinon cul sec.","Ton plus gros fantasme, version cash ? Sinon 3 gorgées.","L'endroit le plus insolite où tu l'as fait ? Sinon bois.","Ton red flag au lit ? Sinon bois 2 gorgées."] },
+      2: { action:["Masse les épaules de {AUTRE} pendant 20 s.","Murmure quelque chose de chaud à l'oreille de {AUTRE}.","Enlève un vêtement de ton choix, ou cul sec.","Lap dance de 10 s sur {AUTRE} (habillé).","Strip-tease sexy d'un vêtement."],
+            verite:["Décris ton meilleur souvenir coquin. Sinon 3 gorgées.","Sur qui de la table tu as déjà eu une pensée pas catholique ? Sinon bois.","Ce que tu préfères qu'on te fasse ? Sinon cul sec."] },
+      3: { action:["Montre ton dernier nude à {AUTRE}, ou cul sec. 🌶️","Montre la photo la plus hot de ta galerie à {AUTRE}, ou cul sec.","Échange un nude avec {AUTRE}, ou vous buvez 4 gorgées chacun.","Roule une pelle à {AUTRE}, ou cul sec.","Body shot sur {AUTRE}.","Caresse {AUTRE} 10 s là où il/elle préfère.","Assieds-toi sur {AUTRE} et ondule 10 s."],
+            verite:["Raconte ta nuit la plus chaude, sans censure. Sinon cul sec.","Ce que tu rêverais de faire à quelqu'un ici (initiales) ? Sinon 3 gorgées. 🌶️"] },
+    },
+    alcool: { action:["Cul sec, ou enlève un vêtement.","Distribue 5 gorgées comme tu veux.","Désigne ton binôme : vous buvez cul sec ensemble.","Tout le monde boit, sauf la personne que tu protèges.","Gorgée sur la main de {AUTRE} : petit body shot.","Bois autant de gorgées que de lettres dans le prénom de ton crush."],
+              verite:["Ta pire cuite ? Sinon 3 gorgées.","Le truc le plus con fait bourré ? Sinon cul sec.","Avec qui ici tu as déjà fini bien éméché ? Vous buvez.","Le dernier à avoir vomi en soirée boit. Qui ?","Une pelle roulée bourré que tu regrettes ? Bois si oui."] },
+  },
+  // -------- ⏱️ DÉFI CHRONO : {t, s(secondes)} --------
+  chrono: {
+    fun:    [{t:"Cite 5 membres de la team Nasdas.",s:18},{t:"Nomme 5 sons de Jul.",s:15},{t:"Cite 5 streamers français.",s:15},{t:"Cite 5 raisons de larguer quelqu'un.",s:18},{t:"Imite 3 personnes de la table.",s:15},{t:"Fais 5 grimaces différentes.",s:12}],
+    hot:    {
+      1: [{t:"15 s pour citer 5 acteurs/actrices X. 🔞",s:15},{t:"10 s pour nommer 3 positions.",s:10},{t:"15 s pour citer 5 endroits où tu rêves de le faire.",s:15},{t:"20 s : un compliment bien osé à chaque joueur.",s:20}],
+      2: [{t:"20 s : un massage des épaules à 3 personnes.",s:20},{t:"15 s pour murmurer un truc chaud à 2 personnes.",s:15},{t:"10 s pour enlever 2 vêtements/accessoires.",s:10}],
+      3: [{t:"Caresse {AUTRE} 15 s, aux zones de ton choix. 🌶️",s:15},{t:"Body shot sur {AUTRE}.",s:10},{t:"Montre ton dernier nude à {AUTRE}, ou cul sec.",s:10}],
+    },
+    alcool: [{t:"Désigne 5 personnes qui boivent une gorgée.",s:12},{t:"Trouve 5 cocktails différents.",s:15},{t:"Fais boire tous ceux qui portent du noir.",s:12},{t:"Chaque seconde d'hésitation = une gorgée pour toi.",s:10}],
+  },
+  // -------- 🎰 ROULETTE RUSSE : gage si la carte est piégée --------
+  roulette: {
+    fun:    ["Publie un emoji au hasard en story, là, maintenant.","Laisse {AUTRE} te recoiffer n'importe comment pour le tour.","Parle en yaourt (fausse langue) pendant 30 s.","Fais une déclaration enflammée à un objet de la pièce.","Imite la voix de {AUTRE} jusqu'à ton prochain tour."],
+    hot:    {
+      1: ["Mime ta position préférée, le groupe devine. 🔞","Décris ton dernier rêve coquin en une phrase.","Envoie « tu fais quoi ce soir ? » à ton ex.","Twerk de 15 s au milieu du cercle."],
+      2: ["Strip-tease sexy d'un vêtement.","Masse {AUTRE} pendant 20 s.","Murmure ton meilleur compliment chaud à {AUTRE}.","Lap dance de 10 s sur {AUTRE} (habillé)."],
+      3: ["Montre ton dernier nude à {AUTRE}, ou cul sec. 🌶️","Roule une pelle à {AUTRE} ou cul sec.","Caresse {AUTRE} pendant 10 s.","Body shot sur {AUTRE}.","Échange un nude avec {AUTRE}, ou vous buvez 4 gorgées chacun."],
+    },
+    alcool: ["Cul sec !","Bois 4 gorgées d'un trait.","Tournée générale offerte par toi.","Toi et {AUTRE} : cul sec ensemble.","Bois autant de gorgées que de personnes à table."],
+  },
+  // -------- 🗳️ LE VERDICT : le groupe vote sur {NOM} --------
+  // La règle « le plus pointé boit, unanimité = cul sec » est ajoutée automatiquement (voir resolveCard).
+  verdict: {
+    fun:    ["À 3, pointez qui finirait dans les Marseillais.","À 3, pointez le/la plus gros·se stalker du groupe.","À 3, pointez le/la roi/reine du cringe.","À 3, pointez qui ghoste le plus ses dates.","À 3, pointez qui ferait le pire candidat de la Star Academy.","À 3, pointez qui rate toujours son réveil."],
+    hot:    {
+      1: ["À 3, pointez qui a le plus gros tableau de chasse. 🔞","À 3, pointez le plus gros allumeur de la table.","À 3, pointez qui textote à 3h pour un plan.","À 3, pointez qui repartirait accompagné·e ce soir."],
+      2: ["À 3, pointez la personne la plus sexy de la soirée.","À 3, pointez qui embrasse le mieux (selon vous).","À 3, pointez qui oserait un strip-tease."],
+      3: ["À 3, pointez qui est le plus chaud ce soir. 🌶️","À 3, pointez qui a les pratiques les plus osées.","À 3, pointez qui craquerait en premier ce soir."],
+    },
+    alcool: ["À 3, pointez qui a la pire descente.","À 3, pointez qui tiendra le moins longtemps ce soir.","À 3, pointez qui finira sur la table.","À 3, pointez qui sera bourré·e en premier."],
+  },
+  // -------- 🙅 JE N'AI JAMAIS… (ceux qui l'ont fait lèvent la main / boivent) --------
+  jamais: {
+    fun:    ["…envoyé un message au mauvais groupe.","…stalké un ex jusqu'à 3 ans en arrière.","…fait semblant d'adorer un cadeau pourri.","…ghosté quelqu'un sans explication.","…menti sur mon tableau de chasse."],
+    hot:    {
+      1: ["…couché le premier soir.","…envoyé un nude que je regrette.","…fricoté avec un·e collègue.","…eu un coup avec l'ex d'un·e pote.","…simulé."],
+      2: ["…fait l'amour dans un lieu public.","…eu un plan à plusieurs.","…testé les jouets.","…fait un strip-tease à quelqu'un."],
+      3: ["…fait un plan à trois.","…été menotté·e.","…filmé un moment intime.","…eu un coup d'un soir dont j'ai oublié le prénom. 🌶️"],
+    },
+    alcool: ["…vomi à cause de l'alcool.","…oublié une partie de ma soirée.","…dansé sur un bar ou une table.","…fini la soirée chez un·e inconnu·e.","…appelé mon ex bourré."],
+  },
+  // -------- 🔄 CHACUN SON TOUR : tour de table, le premier qui bloque/répète boit --------
+  tour: {
+    fun:    ["Chacun son tour, citez un président de la République. Le premier qui bloque ou répète boit 3 gorgées.","Chacun son tour, un rappeur français. Qui bloque boit 3 gorgées.","Chacun son tour, un son de Jul. Qui sèche cul sec.","Chacun son tour, un streamer français. Qui sèche boit 2 gorgées.","Chacun son tour, un membre de télé-réalité (Marseillais, Anges…). Qui répète boit 2 gorgées.","Chacun son tour, un influenceur français. Qui bloque boit 2 gorgées.","Chacun son tour, une marque de voiture. Qui sèche ou répète boit 2 gorgées.","Chacun son tour, un film Disney. Le premier bloqué boit 3 gorgées.","Chacun son tour, un pays d'Europe. Qui répète ou sèche boit 2 gorgées.","Chacun son tour, un super-héros. Premier à sécher : 3 gorgées.","Chacun son tour, une marque de fringues. Qui répète boit 2 gorgées.","Chacun son tour, un personnage de dessin animé. Qui bloque boit 3 gorgées.","Chacun son tour, une capitale. Premier à se tromper : 3 gorgées.","Chacun son tour, une série Netflix. Qui bloque boit 2 gorgées.","Chacun son tour, un sport olympique. Premier à sécher : 3 gorgées.","Chacun son tour, une marque de tech. Qui répète boit 2 gorgées."],
+    hot:    {
+      1: ["Chacun son tour, citez un·e acteur/actrice canon. Qui bloque boit 3 gorgées. 🔞","Chacun son tour, un endroit pour s'embrasser. Qui sèche boit 2 gorgées.","Chacun son tour, une phrase de drague. La pire (vote du groupe) boit 2 gorgées.","Chacun son tour, un trait physique qui te fait craquer. Qui répète boit 2 gorgées.","Chacun son tour, une célébrité avec qui tu passerais la nuit. Qui bloque boit 3 gorgées.","Chacun son tour, un red flag en couple. Qui sèche boit 2 gorgées."],
+      2: ["Chacun son tour, une zone érogène. Qui bloque ou répète boit 3 gorgées.","Chacun son tour, un endroit insolite pour le faire. Qui sèche cul sec.","Chacun son tour, un mot coquin. Qui répète boit 2 gorgées.","Chacun son tour, un vêtement sexy. Qui bloque boit 3 gorgées.","Chacun son tour, un type de baiser. Qui sèche boit 2 gorgées."],
+      3: ["Chacun son tour, une position. Qui bloque ou répète boit 3 gorgées. 🌶️","Chacun son tour, un·e acteur/actrice X. Premier à sécher cul sec. 🔞","Chacun son tour, une pratique 🔞. Qui bloque cul sec.","Chacun son tour, un accessoire coquin. Qui répète boit 3 gorgées.","Chacun son tour, un fantasme. Qui bloque cul sec. 🌶️"],
+    },
+    alcool: ["Chacun son tour, une marque de bière. Qui bloque cul sec.","Chacun son tour, un cocktail. Premier à sécher boit 3 gorgées.","Chacun son tour, un alcool fort. Qui répète boit 2 gorgées.","Chacun son tour, un truc qu'on fait quand on est bourré. Qui bloque cul sec.","Chacun son tour, une marque de vodka. Qui sèche boit 3 gorgées.","Chacun son tour, un mot pour dire « ivre ». Qui bloque cul sec.","Chacun son tour, un shooter connu. Qui répète boit 2 gorgées.","Chacun son tour, un vin (région ou cépage). Qui bloque boit 2 gorgées.","Chacun son tour, une excuse pour ne pas boire. La pire (vote) cul sec.","Chacun son tour, un endroit où tu as déjà bu. Qui répète boit 2 gorgées.","Chacun son tour, une marque de whisky ou de rhum. Qui sèche boit 3 gorgées.","Chacun son tour, un symptôme de gueule de bois. Qui bloque cul sec."],
+  },
+};
+
+// ============ ÉTAT ============
+let players = [];
+let activeThemes = new Set(["fun","hot","alcool"]);
+let activeTypes  = new Set(["av","chrono","roulette","verdict","jamais","tour"]);
+let hotLevel = 2; // 1=Soft, 2=Moyen, 3=Hard (plafond cumulatif)
+const HOT_LEVELS = { 1:{label:"Soft",emoji:"💋"}, 2:{label:"Moyen",emoji:"🔥"}, 3:{label:"Hard",emoji:"🌶️"} };
+
+// Retourne le pool de contenu pour un type+thème. Pour Hot, fusionne les niveaux 1..hotLevel.
+function pool(type, theme, sub){
+  let c = CONTENT[type][theme];
+  if(theme !== "hot") return sub ? c[sub] : c;
+  let merged = [];
+  for(let l=1; l<=hotLevel; l++){
+    const lv = c[l]; if(!lv) continue;
+    merged = merged.concat(sub ? (lv[sub]||[]) : lv);
+  }
+  return merged;
+}
+let round = 1;
+let spinning = false;
+let chosenIndex = -1;
+let timerInterval = null;
+const COLORS = ["#ff4d8d","#7b5cff","#3ddc97","#ffd166","#5cc8ff","#ff7b3d","#c084fc","#fb7185","#34d399","#60a5fa"];
+
+// ============ HELPERS ============
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+function show(id){ $$(".screen").forEach(s=>s.classList.remove("active")); $(id).classList.add("active"); }
+function vibrate(ms){ if(navigator.vibrate) navigator.vibrate(ms); }
+function rand(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+// ============ SETUP ============
+function renderPlayers(){
+  const list = $("#playerList"); list.innerHTML = "";
+  players.forEach((p,i)=>{
+    const row = document.createElement("div");
+    row.className = "player-row";
+    row.innerHTML = `<div class="player-dot" style="background:${p.color};color:#1a1130">${p.name[0].toUpperCase()}</div>
+      <div class="player-name">${p.name}</div><button class="del" data-i="${i}">✕</button>`;
+    list.appendChild(row);
+  });
+  const start = $("#startBtn");
+  if(players.length >= 2){ start.disabled = false; start.textContent = "C'est parti ! 🎉"; }
+  else { start.disabled = true; start.textContent = "Ajoute au moins 2 joueurs"; }
+}
+function addPlayer(){
+  const inp = $("#nameInput"); const name = inp.value.trim();
+  if(!name || players.length >= 12) return;
+  players.push({ name, color: COLORS[players.length % COLORS.length] });
+  inp.value = ""; inp.focus(); renderPlayers();
+}
+function renderTypeChips(){
+  const box = $("#typesSetup"); box.innerHTML = "";
+  Object.entries(TYPES).forEach(([k,t])=>{
+    const b = document.createElement("button");
+    b.className = "chip type" + (activeTypes.has(k) ? " on" : "");
+    b.dataset.type = k;
+    b.textContent = `${t.emoji} ${t.label}`;
+    box.appendChild(b);
+  });
+}
+const HOT_DESC = { 1:"verbal, sans contact", 2:"massages, strip…", 3:"intime, sans tabou" };
+function renderHotLevel(){
+  const seg = $("#hotLevelSeg"); seg.innerHTML = "";
+  Object.entries(HOT_LEVELS).forEach(([lvl,info])=>{
+    const b = document.createElement("button");
+    b.className = (+lvl === hotLevel) ? "on" : "";
+    b.dataset.lvl = lvl;
+    b.innerHTML = `${info.emoji} ${info.label}<small>${HOT_DESC[lvl]}</small>`;
+    seg.appendChild(b);
+  });
+  // visible uniquement si le thème Hot est actif
+  const showHot = activeThemes.has("hot");
+  $("#hotLevelLabel").classList.toggle("hidden", !showHot);
+  seg.classList.toggle("hidden", !showHot);
+}
+$("#hotLevelSeg").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  hotLevel = +b.dataset.lvl;
+  renderHotLevel();
+});
+$("#addBtn").onclick = addPlayer;
+$("#nameInput").addEventListener("keydown", e=>{ if(e.key==="Enter") addPlayer(); });
+$("#playerList").addEventListener("click", e=>{ if(e.target.classList.contains("del")){ players.splice(+e.target.dataset.i,1); renderPlayers(); } });
+$("#themesSetup").addEventListener("click", e=>{
+  const chip = e.target.closest(".chip"); if(!chip) return;
+  const t = chip.dataset.t;
+  if(activeThemes.has(t)){ if(activeThemes.size>1){ activeThemes.delete(t); chip.classList.remove("on"); } }
+  else { activeThemes.add(t); chip.classList.add("on"); }
+  renderHotLevel();
+});
+$("#typesSetup").addEventListener("click", e=>{
+  const chip = e.target.closest(".chip"); if(!chip) return;
+  const t = chip.dataset.type;
+  if(activeTypes.has(t)){ if(activeTypes.size>1){ activeTypes.delete(t); chip.classList.remove("on"); } }
+  else { activeTypes.add(t); chip.classList.add("on"); }
+});
+$("#startBtn").onclick = ()=>{ round = 1; startGame(); };
+
+// ============ JEU / BOUTEILLE ============
+function startGame(){ show("#game"); layoutNames(); $("#roundLabel").textContent = "Tour " + round; }
+function layoutNames(){
+  const wheel = $("#wheel");
+  wheel.querySelectorAll(".name-tag").forEach(n=>n.remove());
+  const R = wheel.clientWidth / 2 - 30;
+  players.forEach((p,i)=>{
+    const ang = (i / players.length) * 2 * Math.PI - Math.PI/2;
+    const tag = document.createElement("div");
+    tag.className = "name-tag"; tag.dataset.i = i;
+    tag.style.left = `calc(50% + ${Math.cos(ang)*R}px)`;
+    tag.style.top = `calc(50% + ${Math.sin(ang)*R}px)`;
+    tag.style.transform = "translate(-50%,-50%)";
+    tag.style.color = p.color; tag.textContent = p.name;
+    wheel.appendChild(tag);
+  });
+}
+function spin(){
+  if(spinning) return;
+  spinning = true;
+  $("#spinHint").style.opacity = "0";
+  $$(".name-tag").forEach(t=>t.classList.remove("chosen"));
+  vibrate(20);
+  chosenIndex = Math.floor(Math.random() * players.length);
+  const targetSlice = (chosenIndex / players.length) * 360;
+  const finalAngle = (4 + Math.floor(Math.random()*3))*360 + targetSlice;
+  $("#bottle").style.transform = `rotate(${finalAngle}deg)`;
+  setTimeout(()=>{
+    spinning = false; vibrate([30,40,80]);
+    const tag = document.querySelector(`.name-tag[data-i="${chosenIndex}"]`);
+    if(tag) tag.classList.add("chosen");
+    setTimeout(dealCards, 600);
+  }, 4100);
+}
+$("#wheelWrap").addEventListener("click", spin);
+
+// ============ CARTES (3 choix) ============
+function dealCards(){
+  $("#choiceName").textContent = players[chosenIndex].name;
+  const combos = [];
+  for(const ty of activeTypes) for(const th of activeThemes) combos.push([ty,th]);
+  shuffle(combos);
+  const picked = combos.slice(0, Math.min(3, combos.length));
+  const box = $("#cardChoice"); box.innerHTML = "";
+  picked.forEach(([ty,th])=>{
+    const T = TYPES[ty], TH = THEMES[th];
+    const card = document.createElement("button");
+    card.className = "game-card" + (th==="hot" ? " hot" : "");
+    card.style.background = TH.color;
+    card.innerHTML = `<div class="gc-type">${T.emoji} ${T.label}</div>
+                      <div class="gc-theme">${TH.emoji} ${TH.label}</div>`;
+    card.onclick = ()=>{ $("#choiceOverlay").classList.remove("active"); resolveCard(ty,th); };
+    box.appendChild(card);
+  });
+  $("#choiceOverlay").classList.add("active");
+}
+
+// ============ RÉSOLUTION D'UNE CARTE ============
+function resolveCard(type, theme){
+  const T = TYPES[type], TH = THEMES[theme];
+  const me = players[chosenIndex].name;
+  const others = players.filter((_,i)=>i!==chosenIndex);
+  let text = "", sec = null, header = me;
+
+  if(type === "av"){ const sub = Math.random()<.5 ? "action" : "verite"; text = rand(pool("av", theme, sub)); }
+  else if(type === "chrono"){ const c = rand(pool("chrono", theme)); text = c.t; sec = c.s; }
+  else if(type === "roulette"){
+    if(Math.random() < 0.35){ text = "😅 Ouf… le destin t'épargne. Tu passes ce tour !"; }
+    else { text = "💥 PIÉGÉ ! " + rand(pool("roulette", theme)); }
+  }
+  else { text = rand(pool(type, theme)); }   // verdict, jamais, tour
+
+  if(type === "verdict") text += " 👉 Le plus pointé boit 2 gorgées. Si tout le monde vise la même personne : CUL SEC pour l'élu·e !";
+
+  if(T.mode === "group") header = (type === "tour") ? "🔄 Tour de table !" : "🎉 Tout le monde vote !";
+
+  text = text.replace(/\{NOM\}/g, me);
+  if(text.includes("{AUTRE}") && others.length) text = text.replace(/\{AUTRE\}/g, rand(others).name);
+
+  $("#qName").textContent = header;
+  $("#qType").textContent = `${T.emoji} ${T.label.toUpperCase()}`;
+  const themeEl = $("#qTheme");
+  themeEl.textContent = `${TH.emoji} ${TH.label}`;
+  themeEl.style.background = TH.color;
+  themeEl.style.color = theme === "hot" ? "#fff" : "#1a1130";
+  $("#qText").textContent = text;
+
+  // timer
+  clearInterval(timerInterval);
+  const tBox = $("#qTimer");
+  if(sec != null){
+    tBox.style.display = "block";
+    $("#timerNum").textContent = sec;
+    const sb = $("#timerStart"); sb.disabled = false; sb.textContent = "Démarrer ⏱️";
+    sb.onclick = ()=> startTimer(sec);
+  } else { tBox.style.display = "none"; }
+
+  $("#questionOverlay").classList.add("active");
+}
+function startTimer(sec){
+  clearInterval(timerInterval);
+  let n = sec;
+  $("#timerNum").textContent = n;
+  const sb = $("#timerStart"); sb.disabled = true; sb.textContent = "En cours…";
+  vibrate(20);
+  timerInterval = setInterval(()=>{
+    n--;
+    if(n > 0){ $("#timerNum").textContent = n; if(n<=3) vibrate(40); }
+    else { clearInterval(timerInterval); $("#timerNum").textContent = "⏰ STOP !"; vibrate([90,60,90]); sb.disabled = false; sb.textContent = "Relancer"; }
+  }, 1000);
+}
+$("#doneBtn").onclick = ()=>{
+  clearInterval(timerInterval);
+  $("#questionOverlay").classList.remove("active");
+  round++; $("#roundLabel").textContent = "Tour " + round;
+  $("#spinHint").style.opacity = "1";
+  $$(".name-tag").forEach(t=>t.classList.remove("chosen"));
+};
+
+$("#backBtn").onclick = ()=> show("#setup");
+$("#resetBtn").onclick = ()=>{ round = 1; $("#roundLabel").textContent = "Tour 1"; $("#bottle").style.transform = "rotate(0deg)"; $$(".name-tag").forEach(t=>t.classList.remove("chosen")); $("#spinHint").style.opacity="1"; };
+window.addEventListener("resize", ()=>{ if($("#game").classList.contains("active")) layoutNames(); });
+
+renderTypeChips();
+renderHotLevel();
+renderPlayers();
+</script>
+</body>
+</html>
