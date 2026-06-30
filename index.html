@@ -380,22 +380,49 @@ function layoutNames(){
     wheel.appendChild(tag);
   });
 }
+let bottleAngle = 0;
+const SPIN_MS = 5000, WINDUP_MS = 380;
 function spin(){
   if(spinning) return;
   spinning = true;
   $("#spinHint").style.opacity = "0";
   $$(".name-tag").forEach(t=>t.classList.remove("chosen"));
-  vibrate(20);
+  vibrate(25);
+
   chosenIndex = Math.floor(Math.random() * players.length);
   const targetSlice = (chosenIndex / players.length) * 360;
-  const finalAngle = (4 + Math.floor(Math.random()*3))*360 + targetSlice;
-  $("#bottle").style.transform = `rotate(${finalAngle}deg)`;
-  setTimeout(()=>{
-    spinning = false; vibrate([30,40,80]);
+  const bottle = $("#bottle");
+
+  // complément (mod 360) pour tomber pile sur le nom, + 5 à 7 tours complets
+  const current = ((bottleAngle % 360) + 360) % 360;
+  const delta = (targetSlice - current + 360) % 360;
+  const turns = 5 + Math.floor(Math.random() * 3);
+  const finalAngle = bottleAngle + turns * 360 + delta;
+
+  // 1) petit recul d'anticipation (effet ressort)
+  bottle.style.transition = "transform .38s ease-in";
+  bottle.style.transform = `rotate(${bottleAngle - 28}deg)`;
+
+  // 2) grand spin : longue décélération + léger dépassement qui se cale sur le nom
+  setTimeout(() => {
+    bottle.style.transition = `transform ${SPIN_MS}ms cubic-bezier(.12,.67,.24,1.04)`;
+    bottle.style.transform = `rotate(${finalAngle}deg)`;
+  }, WINDUP_MS);
+  bottleAngle = finalAngle;
+
+  // vibrations qui s'intensifient vers la fin (faux "ralenti")
+  setTimeout(() => vibrate(15), WINDUP_MS + SPIN_MS * 0.55);
+  setTimeout(() => vibrate(25), WINDUP_MS + SPIN_MS * 0.78);
+  setTimeout(() => vibrate(40), WINDUP_MS + SPIN_MS * 0.92);
+
+  // révélation
+  setTimeout(() => {
+    spinning = false;
+    vibrate([40, 50, 120]);
     const tag = document.querySelector(`.name-tag[data-i="${chosenIndex}"]`);
-    if(tag) tag.classList.add("chosen");
-    setTimeout(dealCards, 600);
-  }, 4100);
+    if (tag) tag.classList.add("chosen");
+    setTimeout(dealCards, 700);
+  }, WINDUP_MS + SPIN_MS + 60);
 }
 $("#wheelWrap").addEventListener("click", spin);
 
@@ -485,7 +512,7 @@ $("#doneBtn").onclick = ()=>{
 };
 
 $("#backBtn").onclick = ()=> show("#setup");
-$("#resetBtn").onclick = ()=>{ round = 1; $("#roundLabel").textContent = "Tour 1"; $("#bottle").style.transform = "rotate(0deg)"; $$(".name-tag").forEach(t=>t.classList.remove("chosen")); $("#spinHint").style.opacity="1"; };
+$("#resetBtn").onclick = ()=>{ round = 1; $("#roundLabel").textContent = "Tour 1"; const b=$("#bottle"); b.style.transition="transform .4s ease"; b.style.transform="rotate(0deg)"; bottleAngle=0; $$(".name-tag").forEach(t=>t.classList.remove("chosen")); $("#spinHint").style.opacity="1"; };
 window.addEventListener("resize", ()=>{ if($("#game").classList.contains("active")) layoutNames(); });
 
 renderTypeChips();
